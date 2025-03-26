@@ -17,7 +17,7 @@ pub mod Budget {
     use budgetchain_contracts::base::errors::*;
     use budgetchain_contracts::base::types::{
         FundRequest, FundRequestStatus, Project, Milestone, Organization, Transaction, ADMIN_ROLE,
-        ORGANIZATION_ROLE, TRANSACTION_FUND_RELEASE,
+        ORGANIZATION_ROLE, TRANSACTION_FUND_RELEASE, TRANSACTION_FUND_RETURN,
     };
     use budgetchain_contracts::interfaces::IBudget::IBudget;
 
@@ -70,6 +70,7 @@ pub mod Budget {
         AdminAdded: AdminAdded,
         MilestoneCreated: MilestoneCreated,
         MilestoneCompleted: MilestoneCompleted,
+        FundsReturned: FundsReturned,
         #[flat]
         AccessControlEvent: AccessControlComponent::Event,
         #[flat]
@@ -128,6 +129,13 @@ pub mod Budget {
     pub struct MilestoneCompleted {
         pub project_id: u64,
         pub milestone_id: u64,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct FundsReturned {
+        pub project_id: u64,
+        pub amount: u256,
+        pub project_owner: ContractAddress,
     }
 
     #[constructor]
@@ -636,6 +644,81 @@ pub mod Budget {
                             request_id,
                             milestone_id: request.milestone_id.into(),
                             amount: request.amount,
+                        },
+                    ),
+                );
+        }
+
+        /// Allows project owners to return unused funds
+        fn return_funds(
+            ref self: ContractState,
+            project_id: u64,
+            amount: u256,
+        ) {
+            // Validate inputs
+            assert(amount > 0_u256, ERROR_ZERO_AMOUNT);
+            
+            // Get the project details
+            let mut project = self.projects.read(project_id);
+            assert(project.id == project_id, ERROR_INVALID_PROJECT_ID);
+            
+            // Verify caller is the project owner
+            let caller = get_caller_address();
+            assert(caller == project.owner, ERROR_UNAUTHORIZED);
+            
+            // Ensure project has sufficient funds to return
+            assert(project.total_budget >= amount, ERROR_INSUFFICIENT_BUDGET);
+            
+            // Update the project's remaining budget
+            project.total_budget -= amount;
+            self.projects.write(project_id, project);
+            
+            // Create a transaction record for the returned funds
+            let transaction_id = self.transaction_count.read() + 1;
+            
+            // Record the transaction (send funds back to the organization)
+            let transaction = Transaction {
+                id: transaction_id,
+                project_id,
+                sender: caller,
+                recipient: project.org,
+                amount: amount.try_into().unwrap(),
+                timestamp: get_block_timestamp(),
+                category: TRANSACTION_FUND_RETURN,
+                description: 'Returned unused funds',
+            };
+            
+            // Save transaction ID to project transaction IDs
+            self.project_transaction_ids.entry(project_id).append().write(transaction_id);
+            
+            // Save transaction to all transactions array
+            self.all_transactions.append().write(transaction);
+            
+            // Update transaction counter
+            self.transaction_count.write(transaction_id);
+            
+            // Emit the TransactionCreated event
+            self
+                .emit(
+                    TransactionCreated {
+                        id: transaction_id.into(),
+                        sender: caller,
+                        recipient: project.org,
+                        amount: amount.try_into().unwrap(),
+                        timestamp: get_block_timestamp(),
+                        category: TRANSACTION_FUND_RETURN,
+                        description: 'Returned unused funds',
+                    },
+                );
+            
+            // Emit the FundsReturned event
+            self
+                .emit(
+                    Event::FundsReturned(
+                        FundsReturned {
+                            project_id,
+                            amount,
+                            project_owner: caller,
                         },
                     ),
                 );

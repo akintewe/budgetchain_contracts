@@ -221,4 +221,117 @@ mod tests {
         let remaining_budget = dispatcher.get_project_remaining_budget(project_id);
         assert(remaining_budget == 100, 'incorrect remaining budget');
     }
+    
+    #[test]
+    fn test_return_funds_success() {
+        // Setup contract and create organization/project
+        let (contract_address, admin_address) = setup();
+        let dispatcher = IBudgetDispatcher { contract_address };
+        
+        // Create an organization
+        let org_address = contract_address_const::<'Organization'>();
+        let name = 'Test Org';
+        let mission = 'Test Mission';
+        let project_owner = contract_address_const::<'ProjectOwner'>();
+        
+        // Admin creates organization
+        start_cheat_caller_address(contract_address, admin_address);
+        dispatcher.create_organization(name, org_address, mission);
+        stop_cheat_caller_address(contract_address);
+        
+        // Organization allocates budget
+        start_cheat_caller_address(contract_address, org_address);
+        let project_id = dispatcher.allocate_project_budget(
+            org_address,
+            project_owner,
+            1000,
+            array!['Milestone1', 'Milestone2'],
+            array![500, 500],
+        );
+        stop_cheat_caller_address(contract_address);
+        
+        // Check initial budget
+        let initial_budget = dispatcher.get_project_remaining_budget(project_id);
+        assert(initial_budget == 1000, 'Initial budget should be 1000');
+        
+        // Project owner returns funds
+        start_cheat_caller_address(contract_address, project_owner);
+        dispatcher.return_funds(project_id, 200);
+        stop_cheat_caller_address(contract_address);
+        
+        // Check updated budget
+        let updated_budget = dispatcher.get_project_remaining_budget(project_id);
+        assert(updated_budget == 800, 'Budget should be 800 after return');
+    }
+    
+    #[test]
+    #[should_panic(expected: ('Caller not authorized',))]
+    fn test_return_funds_unauthorized() {
+        // Setup contract and create organization/project
+        let (contract_address, admin_address) = setup();
+        let dispatcher = IBudgetDispatcher { contract_address };
+        
+        // Create an organization
+        let org_address = contract_address_const::<'Organization'>();
+        let name = 'Test Org';
+        let mission = 'Test Mission';
+        let project_owner = contract_address_const::<'ProjectOwner'>();
+        let unauthorized_user = contract_address_const::<'Unauthorized'>();
+        
+        // Admin creates organization
+        start_cheat_caller_address(contract_address, admin_address);
+        dispatcher.create_organization(name, org_address, mission);
+        stop_cheat_caller_address(contract_address);
+        
+        // Organization allocates budget
+        start_cheat_caller_address(contract_address, org_address);
+        let project_id = dispatcher.allocate_project_budget(
+            org_address,
+            project_owner,
+            1000,
+            array!['Milestone1', 'Milestone2'],
+            array![500, 500],
+        );
+        stop_cheat_caller_address(contract_address);
+        
+        // Unauthorized user tries to return funds - should fail
+        start_cheat_caller_address(contract_address, unauthorized_user);
+        dispatcher.return_funds(project_id, 200);
+        stop_cheat_caller_address(contract_address);
+    }
+    
+    #[test]
+    #[should_panic(expected: ('Insufficient budget',))]
+    fn test_return_funds_insufficient_funds() {
+        // Setup contract and create organization/project
+        let (contract_address, admin_address) = setup();
+        let dispatcher = IBudgetDispatcher { contract_address };
+        
+        // Create an organization
+        let org_address = contract_address_const::<'Organization'>();
+        let name = 'Test Org';
+        let mission = 'Test Mission';
+        let project_owner = contract_address_const::<'ProjectOwner'>();
+        
+        // Admin creates organization
+        start_cheat_caller_address(contract_address, admin_address);
+        dispatcher.create_organization(name, org_address, mission);
+        stop_cheat_caller_address(contract_address);
+        
+        // Organization allocates budget
+        start_cheat_caller_address(contract_address, org_address);
+        let project_id = dispatcher.allocate_project_budget(
+            org_address,
+            project_owner,
+            1000,
+            array!['Milestone1', 'Milestone2'],
+            array![500, 500],
+        );
+        stop_cheat_caller_address(contract_address);
+        
+        // Project owner tries to return more funds than available - should fail
+        start_cheat_caller_address(contract_address, project_owner);
+        dispatcher.return_funds(project_id, 1500);
+        stop_cheat_caller_address(contract_address);
+    }
 }
