@@ -1,8 +1,8 @@
-use budgetchain_contracts::interfaces::IBudget::{IBudgetDispatcher, IBudgetDispatcherTrait};
 use budgetchain_contracts::budgetchain::Budget;
+use budgetchain_contracts::interfaces::IBudget::{IBudgetDispatcher, IBudgetDispatcherTrait};
 use snforge_std::{
-    CheatSpan, ContractClassTrait, DeclareResultTrait, stop_cheat_caller_address,
-    cheat_caller_address, declare, spy_events, EventSpyAssertionsTrait,
+    CheatSpan, ContractClassTrait, DeclareResultTrait, EventSpyAssertionsTrait,
+    cheat_caller_address, declare, spy_events, stop_cheat_caller_address,
 };
 use starknet::{ContractAddress, contract_address_const};
 
