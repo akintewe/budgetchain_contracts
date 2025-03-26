@@ -1,7 +1,7 @@
-use starknet::ContractAddress;
 use budgetchain_contracts::base::types::{
-    FundRequest, Project, Transaction, Organization, Milestone,
+    FundRequest, Milestone, Organization, Project, Transaction,
 };
+use starknet::ContractAddress;
 
 #[starknet::interface]
 pub trait IBudget<TContractState> {
@@ -53,11 +53,7 @@ pub trait IBudget<TContractState> {
     );
 
     // Return unused project funds
-    fn return_funds(
-        ref self: TContractState,
-        project_id: u64,
-        amount: u256,
-    );
+    fn return_funds(ref self: TContractState, project_id: u64, amount: u256);
 
     // Milestone Management
     fn create_milestone(
