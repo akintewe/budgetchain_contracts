@@ -266,7 +266,7 @@ pub mod Budget {
 
                 transactions_array.append(dummy_tx);
                 i += 1;
-            }
+            };
 
             Result::Ok(transactions_array)
         }
