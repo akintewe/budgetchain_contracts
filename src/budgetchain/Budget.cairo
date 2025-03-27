@@ -294,7 +294,7 @@ pub mod Budget {
                     transactions_array.append(transaction);
                 }
                 i += 1;
-            }
+            };
 
             if transactions_array.len() == 0 {
                 return Result::Err(ERROR_NO_TRANSACTIONS);
@@ -317,7 +317,7 @@ pub mod Budget {
                     paginated_transactions.append(transaction);
                 }
                 j += 1;
-            }
+            };
 
             Result::Ok((paginated_transactions, total_transactions.into()))
         }
@@ -337,7 +337,7 @@ pub mod Budget {
                 let fund_request = self.fund_requests.read((project_id, current_index));
                 fund_requests_to_return.append(fund_request);
                 current_index += 1;
-            }
+            };
 
             fund_requests_to_return
         }
@@ -385,7 +385,7 @@ pub mod Budget {
             while i < milestone_count {
                 sum += *milestone_amounts.at(i.into());
                 i += 1;
-            }
+            };
             assert(sum == total_budget, ERROR_BUDGET_MISMATCH);
 
             let project_id = self.project_count.read();
@@ -413,7 +413,7 @@ pub mod Budget {
                         },
                     );
                 j += 1;
-            }
+            };
 
             self.project_count.write(project_id + 1);
             self.org_milestones.write(org, milestone_count.try_into().unwrap());
